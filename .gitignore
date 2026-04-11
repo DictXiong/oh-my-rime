@@ -12,11 +12,11 @@ build
 # 同步目录
 sync/
 
-# 自定义文件
-*.custom.yaml
-
 # VSCode 项目文件
 *.code-workspace
 
 # 语言模型文件
 *.gram
+
+# 私有字典
+dicts/dictxiong_sogou.dict.yaml

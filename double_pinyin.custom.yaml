@@ -1,0 +1,17 @@
+patch:
+  reverse_lookup/dictionary: radical_pinyin
+  translator/preedit_format: []
+  grammar:
+    language: wanxiang-lts-zh-hans
+    collocation_max_length: 8
+    collocation_min_length: 2
+    collocation_penalty: -10
+    non_collocation_penalty: -20
+    weak_collocation_penalty: -35
+    rear_penalty: -12
+  translator/contextual_suggestions: false
+  translator/max_homophones: 5
+  translator/max_homographs: 5
+  "engine/processors/@before 0": lua_processor@*kp_number_processor
+  # "engine/processors/@before 1": lua_processor@*ctrl_space_processor
+  "speller/alphabet": zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA`_-=+/*.

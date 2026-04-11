@@ -1,0 +1,7 @@
+patch:
+  "style/color_scheme": google
+  "style/color_scheme_dark": google
+  "style/font_face": "PingFang SC Medium"
+  "style/font_point": 16
+  "style/horizontal": true
+  "style/layout/border_width": 2
