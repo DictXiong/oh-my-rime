@@ -20,3 +20,6 @@ sync/
 
 # 私有字典
 dicts/dictxiong_sogou.dict.yaml
+
+# mics
+.swp
