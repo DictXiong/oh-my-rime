@@ -20,6 +20,7 @@ sync/
 
 # 私有字典
 dicts/dictxiong_sogou.dict.yaml
+dicts/rime_word_marker_export.dict.yaml
 
 # mics
 .swp
