@@ -167,6 +167,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: ":" } }
+            - direction: down
+              action: { symbol: { char: "[" } }
           callout:
             - action: { symbol: { char: "D" } }
             - action: { symbol: { char: ":" } }
@@ -175,6 +177,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: ";" } }
+            - direction: down
+              action: { symbol: { char: "]" } }
           callout:
             - action: { symbol: { char: "F" } }
             - action: { symbol: { char: ";" } }
@@ -183,6 +187,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: "(" } }
+            - direction: down
+              action: { symbol: { char: "<" } }
           callout:
             - action: { symbol: { char: "G" } }
             - action: { symbol: { char: "(" } }
@@ -191,6 +197,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: ")" } }
+            - direction: down
+              action: { symbol: { char: ">" } }
           callout:
             - action: { symbol: { char: "H" } }
             - action: { symbol: { char: ")" } }
@@ -199,6 +207,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: "@" } }
+            - direction: down
+              action: { symbol: { char: "{" } }
           callout:
             - action: { symbol: { char: "J" } }
             - action: { symbol: { char: "@" } }
@@ -207,6 +217,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: '"' } }
+            - direction: down
+              action: { symbol: { char: "}" } }
           callout:
             - action: { symbol: { char: "K" } }
             - action: { symbol: { char: '"' } }
