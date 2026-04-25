@@ -3,7 +3,13 @@ set -e
 THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]:-${(%):-%x}}" )" && pwd )
 cd "$THIS_DIR"
 
-BASE_URL="http://sir0-z10.dxng.net:21234"
+BASE_URL="$1"
+if [[ -z "$BASE_URL" ]]; then
+    echo "FATAL: no rime-word-marker base url is given!"
+    echo "Usage: ./update_dict.sh <base-url>"
+    exit -1
+fi
+
 # main dict
 MAIN_DICT="dicts/rime_word_marker_export.dict.yaml"
 curl "$BASE_URL/api/export?statuses=accepted&include_weight=1&include_ai_assist=1&omit_yaml_header=0&export_mode=main&name=rime_word_marker_export" -o "$MAIN_DICT"
