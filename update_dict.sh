@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
-THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]:-${(%):-%x}}" )" && pwd )
+THIS_DIR=$(dirname "$0")
 cd "$THIS_DIR"
 
 BASE_URL="$1"
-if [[ -z "$BASE_URL" ]]; then
+if [ -z "$BASE_URL" ]; then
     echo "FATAL: no rime-word-marker base url is given!"
     echo "Usage: ./update_dict.sh <base-url>"
     exit -1
@@ -17,7 +17,7 @@ curl "$BASE_URL/api/export?statuses=accepted&include_weight=1&include_ai_assist=
 CN_EN="dicts/rime_ice.cn_en_double_pinyin.txt"
 curl https://raw.githubusercontent.com/iDvel/rime-ice/refs/heads/main/en_dicts/cn_en_double_pinyin.txt -o "$CN_EN"
 ORIGINAL_LINE_COUNT=$(wc -l < "$CN_EN")
-[[ $(tail -c1 "$CN_EN" | wc -l) -gt 0 ]] || echo "" >> "$CN_EN"
+[ "$(tail -c1 "$CN_EN" | wc -l)" -gt 0 ] || echo "" >> "$CN_EN"
 curl -fsSL "$BASE_URL/api/export?statuses=accepted&include_weight=0&include_ai_assist=1&omit_yaml_header=1&export_mode=mixed&mixed_scheme=ziranma&name=rime_word_marker_export" >> "$CN_EN"
 # OpenCC dict
 OPENCC="opencc/rime_word_marker_export.opencc.txt"
