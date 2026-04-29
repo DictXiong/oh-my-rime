@@ -137,6 +137,8 @@ patch:
           swipe:
             - direction: up
               action: { symbol: { char: "~" } }
+            - direction: down
+              action: { symbol: { char: "|" } }
           callout:
             - action: { symbol: { char: "A" } }
             - action: { symbol: { char: "ā" } }

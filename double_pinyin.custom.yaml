@@ -12,4 +12,4 @@ patch:
   translator/max_homophones: 5
   translator/max_homographs: 5
   # "engine/processors/@before 1": lua_processor@*ctrl_space_processor
-  "speller/alphabet": zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA`_-=+/*.
+  "speller/alphabet": zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA`_-=+/*.@
