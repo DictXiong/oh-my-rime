@@ -10,12 +10,18 @@ if [ -z "$BASE_URL" ]; then
     exit -1
 fi
 
+if ! curl -fsL --connect-timeout 10 "$BASE_URL" | grep -q "Rime"; then
+    echo "FATAL: error connecting to rime-word-marker"
+    exit -1
+fi
+
+echo "Updating rime dict ..."
 # main dict
 MAIN_DICT="dicts/rime_word_marker_export.dict.yaml"
-curl "$BASE_URL/api/export?statuses=accepted&include_weight=1&include_ai_assist=1&omit_yaml_header=0&export_mode=main&name=rime_word_marker_export" -o "$MAIN_DICT"
+curl -fsSL "$BASE_URL/api/export?statuses=accepted&include_weight=1&include_ai_assist=1&omit_yaml_header=0&export_mode=main&name=rime_word_marker_export" -o "$MAIN_DICT"
 # CN_EN dict
 CN_EN="dicts/rime_ice.cn_en_double_pinyin.txt"
-curl https://raw.githubusercontent.com/iDvel/rime-ice/refs/heads/main/en_dicts/cn_en_double_pinyin.txt -o "$CN_EN"
+curl -fsSL https://raw.githubusercontent.com/iDvel/rime-ice/refs/heads/main/en_dicts/cn_en_double_pinyin.txt -o "$CN_EN"
 ORIGINAL_LINE_COUNT=$(wc -l < "$CN_EN")
 [ "$(tail -c1 "$CN_EN" | wc -l)" -gt 0 ] || echo "" >> "$CN_EN"
 curl -fsSL "$BASE_URL/api/export?statuses=accepted&include_weight=0&include_ai_assist=1&omit_yaml_header=1&export_mode=mixed&mixed_scheme=ziranma&name=rime_word_marker_export" >> "$CN_EN"
