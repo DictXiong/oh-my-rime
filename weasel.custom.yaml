@@ -5,4 +5,7 @@ patch:
   "style/font_point": 16
   "style/horizontal": true
   "style/layout/border_width": 2
+  "preset_color_schemes/mint_light_green/border_color": 0x7BAE4F
   "preset_color_schemes/mint_light_green/hilited_text_color": 0x323232
+  "preset_color_schemes/mint_light_green/hilited_back_color": 0x00000000
+  "preset_color_schemes/google/hilited_back_color": 0x00000000
