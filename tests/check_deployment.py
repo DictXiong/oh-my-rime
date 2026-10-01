@@ -1,6 +1,7 @@
 """Check deployment using only versioned files, without any private/local data."""
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -28,6 +29,10 @@ with tempfile.TemporaryDirectory(prefix='rime-clean-deployment-') as directory:
 
     for config in (clean / 'opencc').glob('*.json'):
         check_opencc(json.loads(config.read_text()))
+    for config in clean.glob('*.schema.yaml'):
+        for line in config.read_text().splitlines():
+            for module in re.findall(r'lua_(?:processor|translator|filter)@\*([\w]+)', line.split('#', 1)[0]):
+                assert (clean / 'lua' / f'{module}.lua').is_file(), f'Missing Lua module in {config.name}: {module}'
     result = subprocess.run(
         ['rime_deployer', '--build', str(clean), str(clean), str(clean / 'build')],
         capture_output=True, text=True, timeout=240,

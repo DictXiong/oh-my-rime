@@ -6,12 +6,14 @@ sort: by_weight
 # 此处为 输入法所用到的词库，既补充拓展词库的地方
 # 雾凇拼音词库，由Github Robot自动更新
 import_tables:
+  - dicts/custom_simple          # 自定义
   - dicts/rime_mint.chars        # 单字词库（万象拼音词库基础版本）
   - dicts/rime_mint.base         # 基础词库（万象拼音词库基础版本）
   - dicts/rime_mint.correlation  # 关联词库（万象拼音词库基础版本）
   - dicts/rime_mint.compatible   # 兼容词库（万象拼音词库基础版本）
+  - dicts/rime_mint.places       # 地名词库（万象拼音词库基础版本）
   - dicts/rime_mint.ext          # 联想词库（万象拼音词库基础版本）
-  - dicts/other_kaomoji          # 颜文字表情（按`vv`呼出)
+  - dicts/other_kaomoji          # 颜文字表情（按`VV`呼出)
   # 20240608 Emoji完全交由OpenCC，不再使用字典作为补充
   # - dicts/other_emoji            # Emoji(仅仅作为补充，实际使用一般是OpenCC生效)
 ...

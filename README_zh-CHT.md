@@ -127,7 +127,9 @@ dicts
 ├── rime_ice.others.dict.yaml  # 白霜詞庫（GitHub action自動更新）
 ├── rime_mint.base.dict.yaml            # 萬象詞庫（GitHub action自動更新）
 ├── rime_mint.chars.dict.yaml           # 萬象詞庫（GitHub action自動更新）
+├── rime_mint.compatible.dict.yaml      # 萬象多音兼容詞庫（GitHub action自動更新）
 ├── rime_mint.correlation.dict.yaml     # 萬象詞庫（GitHub action自動更新）
+├── rime_mint.places.dict.yaml          # 萬象地名詞庫（GitHub action自動更新）
 ├── rime_mint.ext.dict.yaml             # 萬象詞庫（GitHub action自動更新）
 ├── wubi86_core.dict.yaml           # 86版五筆基礎詞庫
 └── wubi98_base.dict.yaml           # 98版五筆基礎詞庫
@@ -150,6 +152,8 @@ import_tables:
   - dicts/rime_mint.chars        # 單字詞庫（萬象拼音詞庫基礎版本）
   - dicts/rime_mint.base         # 基礎詞庫（萬象拼音詞庫基礎版本）
   - dicts/rime_mint.correlation  # 關聯詞庫（萬象拼音詞庫基礎版本）
+  - dicts/rime_mint.compatible   # 多音兼容詞庫（萬象拼音詞庫基礎版本）
+  - dicts/rime_mint.places       # 地名詞庫（萬象拼音詞庫基礎版本）
   - dicts/rime_mint.ext          # 聯想詞庫（萬象拼音詞庫基礎版本）
   - dicts/other_kaomoji          # 顏文字錶情（按`VV`呼出)
   - dicts/rime_ice.others        # 霧凇拼音 others詞庫（用於自動糾錯）
@@ -191,9 +195,9 @@ import_tables:
 ## Star History
 
 <picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Mintimate/oh-my-rime&type=Timeline&theme=dark" />
-<source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Mintimate/oh-my-rime&type=Timeline" />
-<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Mintimate/oh-my-rime&type=Timeline" />
+<source media="(prefers-color-scheme: dark)" srcset="https://dev-stats.mintimate.cn/api/star-history?username=Mintimate&theme=catppuccin_mocha&show_icons=true&repo=oh-my-rime" />
+<source media="(prefers-color-scheme: light)" srcset="https://dev-stats.mintimate.cn/api/star-history?username=Mintimate&theme=catppuccin_latte&show_icons=true&repo=oh-my-rime" />
+<img alt="Star History Chart" src="https://dev-stats.mintimate.cn/api/star-history?username=Mintimate&theme=catppuccin_latte&show_icons=true&repo=oh-my-rime" />
 </picture>
 
 ## Contributors ✨

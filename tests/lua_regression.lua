@@ -73,7 +73,7 @@ debug.sethook()
 
 -- Several scheme instances remain isolated even when the Lua module is shared.
 rime_api = {get_user_data_dir = function() return '.' end}
-local aux = dofile('lua/auxCode_filter.lua')
+local aux = dofile('lua/aux_code_filter.lua')
 local function aux_env(name)
     local env_callback
     local env = {name_space = name, engine = {
@@ -99,10 +99,32 @@ for char, code in pairs(zrm.aux_code) do
     if fly.aux_code[char] and fly.aux_code[char] ~= code then differing = char; break end
 end
 assert(differing, 'fixture must contain differing codes')
-local before = aux.fullAux(zrm, differing)
-local again = aux.fullAux(zrm, differing)
-equal(aux.match(before, zrm.aux_code[differing]:match('%S+')), true, 'zrm retained after flypy init')
-equal(aux.match(again, zrm.aux_code[differing]:match('%S+')), true, 'zrm repeat')
+local function stream(candidates)
+    return {iter = function()
+        local index = 0
+        return function() index = index + 1; return candidates[index] end
+    end}
+end
+local function filter_aux(env, text, code)
+    yielded = {}
+    env.engine.context.input = 'ni' .. env.trigger_key .. code
+    local cand = {text = text, type = 'phrase', comment = '', get_dynamic_type = function() return 'Phrase' end}
+    aux.func(stream({cand}), env)
+    return yielded
+end
+local zrm_code = zrm.aux_code[differing]:match('%S+')
+equal(#filter_aux(zrm, differing, zrm_code), 1, 'zrm retained after flypy init')
+equal(#filter_aux(zrm, differing, zrm_code), 1, 'zrm repeat')
+-- The upstream optimization must not combine keys from different characters/codes.
+zrm.aux_code = {['甲'] = 'ab cd', ['乙'] = 'ef'}
+zrm.aux_index = {}
+equal(#filter_aux(zrm, '甲乙', 'ab'), 1, 'complete auxiliary code')
+equal(#filter_aux(zrm, '甲乙', 'a'), 1, 'single auxiliary key')
+equal(#filter_aux(zrm, '甲乙', 'ad'), 0, 'do not combine separate codes')
+equal(#filter_aux(zrm, '甲乙', 'af'), 0, 'do not combine separate characters')
+rime_api.get_user_data_dir = function() return '/nonexistent-rime-test-directory' end
+equal(next(aux.readAuxTxt('ZRM_Aux-code_4.3')), nil, 'cache must use full data directory')
+rime_api.get_user_data_dir = function() return '.' end
 local ctx = {input = 'nihao', commit = function() error('unexpected commit') end}
 zrm.callback(ctx)
 equal(ctx.input, 'nihao', 'always mode must not change ordinary selection')
@@ -146,12 +168,25 @@ end
 for digit in ('20260922'):gmatch('.') do equal(kp.func(key(digit), kp_env), 1, 'append date digit') end
 equal(context.input, 'N20260922', 'complete date')
 equal(context.selected, 0, 'date must not select')
+for digit = 2, 6 do
+    context.input = 'N'
+    equal(kp.func(key(tostring(digit)), kp_env), 1, 'N followed by ' .. digit)
+    equal(context.input, 'N' .. digit, 'append digit ' .. digit)
+end
+equal(context.selected, 0, 'N digits 2~6 must not select')
 context.input = 'N2'
 equal(kp.func(key('3', true), kp_env), 1, 'keypad date')
 equal(context.input, 'N23', 'keypad append')
 context.input = 'ni'
 equal(kp.func(key('2'), kp_env), 1, 'ordinary selection')
 equal(context.selected, 1, 'ordinary selection preserved')
+context.input = ''
+kp_env.is_composing = false
+equal(kp.func(key('2', true), kp_env), 0, 'idle keypad passes to application')
+equal(context.input, '', 'idle keypad does not start composition')
+kp_env.kp_mode = 'compose'
+equal(kp.func(key('2', true), kp_env), 1, 'compose mode accepts idle keypad')
+equal(context.input, '2', 'compose mode keypad input')
 local function matches(code)
     for _, pattern in ipairs(kp_env.function_patterns) do if code:match(pattern) then return true end end
     return false
@@ -163,4 +198,58 @@ for _, code in ipairs({'N', 'N123456789', 'N1x', 'D12', 'Q1', 'ni2'}) do
     equal(matches(code), false, 'reject ' .. code)
 end
 kp.fini(kp_env)
+
+-- Upstream English repositioning must keep order and isolate schema settings.
+local english = dofile('lua/reduce_english_filter.lua')
+local function english_env(mode, idx)
+    local env = {name_space = 'reduce_english_filter', engine = {
+        context = {input = 'aid'}, schema = {config = {
+            get_int = function() return idx end, get_list = function() return nil end,
+            get_string = function() return mode end,
+        }}
+    }}
+    english.init(env)
+    return env
+end
+local reposition, unchanged = english_env('all', 2), english_env('none', 1)
+local function english_order(env, texts)
+    local candidates = {}
+    for _, text in ipairs(texts) do candidates[#candidates + 1] = {text = text, preedit = ''} end
+    yielded = {}
+    english.func(stream(candidates), env)
+    local results = {}
+    for _, cand in ipairs(yielded) do results[#results + 1] = cand.text end
+    return table.concat(results, ',')
+end
+equal(english_order(reposition, {'甲', '乙', 'aid', '丙'}), '甲,aid,乙,丙', 'promote English')
+equal(english_order(reposition, {'aid', '甲', '乙'}), '甲,aid,乙', 'demote English')
+equal(english_order(unchanged, {'甲', '乙', 'aid'}), '甲,乙,aid', 'none schema stays unchanged')
+equal(english_order(reposition, {'甲', '乙'}), '甲,乙', 'missing English preserves order')
+
+-- Unicode lookup is an independent translator; astral characters use surrogate pairs.
+local unicode = dofile('lua/unicode_translator.lua')
+local lookup_code, disconnected
+Memory = function()
+    return {
+        dict_lookup = function(_, code) lookup_code = code; return true end,
+        iter_dict = function() return stream({
+            {text = '😀', weight = 5}, {text = '一', weight = 1}, {text = '😀', weight = 10},
+        }):iter() end,
+        disconnect = function() disconnected = true end,
+    }
+end
+local unicode_env = {engine = {schema = {}}}
+unicode.init(unicode_env)
+yielded = {}
+unicode.func('Ucni', {start = 0, _end = 4}, unicode_env)
+equal(lookup_code, 'ni', 'Unicode strips prefix')
+equal(#yielded, 10, 'Unicode lookup deduplicates dictionary entries')
+equal(yielded[1].text, 'U+1F600', 'Unicode orders by highest weight')
+equal(yielded[3].text, '\\uD83D\\uDE00', 'Unicode surrogate pair')
+yielded = {}
+unicode.func('ni', {has_tag = function() return false end}, unicode_env)
+equal(#yielded, 0, 'ordinary input bypasses Unicode translator')
+unicode.fini(unicode_env)
+equal(disconnected, true, 'Unicode memory disconnected')
+
 print('Lua regressions passed (' .. count .. ' assertions)')

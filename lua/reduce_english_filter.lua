@@ -1,9 +1,12 @@
--- 降低部分英语单词在候选项的位置
+-- 将部分英文候选调整到指定位置
 -- https://dvel.me/posts/make-rime-en-better/#短单词置顶的问题
+-- 指定候选位的思路参考万象 super_replacer 的 abbrev 模式：
+-- https://amzxyz.github.io/rime-wanxiang/doc/super_replacer/
 -- 感谢大佬 @[Shewer Lu](https://github.com/shewer) 指点
 -- YummyCocoa修改: 
---   1. 在不设置 mode 情况下，调整为默认全降模式（原本为 none 模式）；
---   2. all 会合并默认全降内容和自定义内容。
+--   1. 在不设置 mode 情况下，默认使用全量调整模式（原本为 none 模式）；
+--   2. all 会合并内置调整内容和自定义内容。
+--   3. idx 改为目标候选位；英文无论原本在前还是在后，都会向该位置移动。
 
 local M = {}
 
@@ -11,8 +14,9 @@ function M.init(env)
     local config = env.engine.schema.config
     env.name_space = env.name_space:gsub("^*", "")
 
-    -- 要降低到的位置
-    M.idx = config:get_int(env.name_space .. "/idx")
+    -- 要调整到的位置（从 1 开始）
+    local idx = config:get_int(env.name_space .. "/idx")
+    env.idx = (idx and idx > 0) and idx or 2
 
     -- 所有 3~4 位长度、前 2~3 位是完整拼音、最后一位是声母的单词
     local all = { "aid", "aim", "air", "and", "ann", "ant", "any", "bad", "bag", "bail", "bait", "bam", "ban", "band",
@@ -49,13 +53,13 @@ function M.init(env)
         -- 下面是其他长度的
         "quanx", "eg",
 	}
-    M.all = {}
+    local all_map = {}
     for _, v in ipairs(all) do
-        M.all[v] = true
+        all_map[v] = true
     end
 
     -- 自定义
-    M.words = {}
+    local words = {}
     local list = config:get_list(env.name_space .. "/words")
 
     -- 当 words 没有定义，赋值长度为0
@@ -63,56 +67,110 @@ function M.init(env)
 
     for i = 0, listSize - 1 do
         local word = list:get_value_at(i).value
-        M.words[word] = true
+        words[word:lower()] = true
     end
 
-    -- 模式(YummyCocoa: all 会合并默认全降内容)
+    -- 模式(YummyCocoa: all 会合并内置调整内容)
     local mode = config:get_string(env.name_space .. "/mode")
     if mode == "all" then
         -- 合并 all 和 words
         local mergedTable = {}
-        for key in pairs(M.all) do
+        for key in pairs(all_map) do
             mergedTable[key] = true
         end
-        for key in pairs(M.words) do
+        for key in pairs(words) do
             mergedTable[key] = true
         end
-        M.map = mergedTable
+        env.map = mergedTable
     elseif mode == "custom" then
-        M.map = M.words
+        env.map = words
     elseif mode == "none" then
-        M.map = {}
+        env.map = {}
     else 
-        M.map = M.all
+        env.map = all_map
     end
 end
 
+local function normalized_english(text)
+    return (text or ""):lower():gsub("[%s%p]", "")
+end
+
+local function is_target_english(cand, normalized_code)
+    local text = cand.text or ""
+    local preedit = cand.preedit or ""
+
+    -- 只调整与当前编码完全对应的纯英文候选，避免误动中英混输、反查等候选。
+    return not preedit:find(" ", 1, true)
+        and text:match("[a-zA-Z]") ~= nil
+        and text:match("[^%w%p%s]") == nil
+        and normalized_english(text) == normalized_code
+end
+
 function M.func(input, env)
-    -- filter start
     local code = env.engine.context.input
-    if M.map[code] then
-        local pending_cands = {}
-        local index = 0
+    local normalized_code = normalized_english(code)
+
+    -- 未命中调整码，或者输入不是英文编码时，直接透传。
+    if normalized_code == "" or not env.map[code:lower()] then
         for cand in input:iter() do
-            index = index + 1
-            -- 找到要降低的英文词，加入 pending_cands
-            if cand.preedit:find(" ") or not cand.text:match("[a-zA-Z]") then
-                yield(cand)
-            else
-                table.insert(pending_cands, cand)
-            end
-            if index >= M.idx + #pending_cands - 1 then
-                for _, cand in ipairs(pending_cands) do
-                    yield(cand)
-                end
-                break
-            end
+            yield(cand)
         end
+        return
     end
 
-    -- yield other
-    for cand in input:iter() do
-        yield(cand)
+    -- 只缓存目标英文之前的候选；找到后继续流式迭代，避免枚举整个候选集。
+    local iter_func, state, iter_var = input:iter()
+    local function next_cand()
+        iter_var = iter_func(state, iter_var)
+        return iter_var
+    end
+
+    local before = {}
+    local target = nil
+    local cand = next_cand()
+    while cand do
+        if is_target_english(cand, normalized_code) then
+            target = cand
+            break
+        end
+        before[#before + 1] = cand
+        cand = next_cand()
+    end
+
+    -- 词典中没有对应英文时，保持原始顺序。
+    if not target then
+        for _, buffered in ipairs(before) do
+            yield(buffered)
+        end
+        return
+    end
+
+    local slots_before_target = env.idx - 1
+    if #before >= slots_before_target then
+        -- 英文原本靠后：前移到 idx，其余候选保持相对顺序。
+        for i = 1, slots_before_target do
+            yield(before[i])
+        end
+        yield(target)
+        for i = slots_before_target + 1, #before do
+            yield(before[i])
+        end
+    else
+        -- 英文原本靠前：先用后续候选填满 idx 之前的位置，再放回英文。
+        for _, buffered in ipairs(before) do
+            yield(buffered)
+        end
+        local missing = slots_before_target - #before
+        for _ = 1, missing do
+            local filler = next_cand()
+            if not filler then break end
+            yield(filler)
+        end
+        yield(target)
+    end
+
+    for remaining in iter_func, state, iter_var do
+        yield(remaining)
     end
 end
 
