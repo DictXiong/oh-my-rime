@@ -158,6 +158,44 @@ import_tables:
 ...
 ```
 
+
+### 私有词库更新
+
+默认配置不依赖私有词库。使用 Rime Word Marker 的用户可以在本项目目录运行：
+
+```sh
+sh update_dict.sh https://你的词库服务地址
+```
+
+iOS a-Shell 中请使用其完整 POSIX shell：
+
+```sh
+dash update_dict.sh https://你的词库服务地址
+```
+
+脚本只使用 `curl` 和常见的文件、文本命令，不需要 Bash、Python 或 jq。
+所有数据先下载到临时目录，校验导出格式后才替换；替换失败时恢复原文件。
+成功后会在本地 `rime_mint.dict.yaml` 和 `opencc/emoji.json` 中接入私有数据，重复运行不会重复添加引用；随后需要重新部署 Rime。
+私有文件继续由 `.gitignore` 排除，新增的私有引用属于本地配置，请勿提交到公共方案。
+
+桌面端的 `sh update_patch.sh` 需要 `curl`、`jq` 以及 `sha256sum` 或 `shasum`。
+它根据 GitHub LTS 发布资产的大小和 SHA-256 校验语言模型；残缺、过期的文件会重新下载。
+下载或校验失败时保留旧方案和模型。
+
+### 开发验证
+
+CI 检查 Shell/Lua 语法、执行 Lua 和更新脚本回归测试，并在没有私有文件的目录中部署默认方案。
+本地可运行（需要 Lua 5.4、Python 3.9+、jq、ShellCheck、`rime_deployer`）：
+
+```sh
+shellcheck update_dict.sh update_patch.sh
+lua tests/lua_regression.lua
+python3 tests/test_updates.py
+python3 tests/check_deployment.py
+```
+
+更新脚本测试使用模拟下载，不会访问网络或修改本地词库。安装了 `dash` 和 BusyBox 时，也会验证这两种环境。
+
 ------
 
 ## 支持

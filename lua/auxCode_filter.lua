@@ -13,7 +13,7 @@ local AuxFilter = {}
 function AuxFilter.init(env)
     -- log.info("** AuxCode filter", env.name_space)
 
-    AuxFilter.aux_code = AuxFilter.readAuxTxt(env.name_space)
+    env.aux_code = AuxFilter.readAuxTxt(env.name_space)
 
     local engine = env.engine
     local config = engine.schema.config
@@ -32,7 +32,7 @@ function AuxFilter.init(env)
     ----------------------------
     env.notifier = engine.context.select_notifier:connect(function(ctx)
         -- 含有輔助碼分隔符才處理
-        if not string.find(ctx.input, env.trigger_key_string) and env.show_aux_notice ~= "always" then
+        if not string.find(ctx.input, env.trigger_key_string) then
             return
         end
 
@@ -71,15 +71,18 @@ end
 ----------------
 function AuxFilter.readAuxTxt(txtpath)
     --log.info("** AuxCode filter", 'read Aux code txt:', txtpath)
-    if AuxFilter.cache then
-        return AuxFilter.cache
-    end
-
     local defaultFile = 'ZRM_Aux-code_4.3.txt'
     local userPath = rime_api.get_user_data_dir() .. "/lua/aux_code/"
     local fileAbsolutePath = userPath .. txtpath .. ".txt"
 
-    local file = io.open(fileAbsolutePath, "r") or io.open(userPath .. defaultFile, "r")
+    AuxFilter.cache = AuxFilter.cache or {}
+    if AuxFilter.cache[fileAbsolutePath] then return AuxFilter.cache[fileAbsolutePath] end
+    local file = io.open(fileAbsolutePath, "r")
+    if not file then
+        fileAbsolutePath = userPath .. defaultFile
+        if AuxFilter.cache[fileAbsolutePath] then return AuxFilter.cache[fileAbsolutePath] end
+        file = io.open(fileAbsolutePath, "r")
+    end
     if not file then
         error("Unable to open auxiliary code file.")
         return {}
@@ -88,7 +91,7 @@ function AuxFilter.readAuxTxt(txtpath)
     local auxCodes = {}
     for line in file:lines() do
         local clean_line = line:match("[^\r\n]+") -- 去掉換行符，不然 value 是帶著 \n 的
-        local key, value = clean_line:match("([^=]+)=(.+)") -- 分割 = 左右的變數
+        local key, value = (clean_line or ""):match("([^=]+)=(.+)") -- 分割 = 左右的變數
         if key and value then
             if auxCodes[key] then
                 auxCodes[key] = auxCodes[key] .. " " .. value
@@ -103,8 +106,8 @@ function AuxFilter.readAuxTxt(txtpath)
     --     log.info(key, table.concat(value, ','))
     -- end
 
-    AuxFilter.cache = auxCodes
-    return AuxFilter.cache
+    AuxFilter.cache[fileAbsolutePath] = auxCodes
+    return auxCodes
 end
 
 -- 輔助函數，用於獲取表格的所有鍵
@@ -142,7 +145,7 @@ function AuxFilter.fullAux(env, word)
     -- log.info('候选词：', word)
     for _, codePoint in utf8.codes(word) do
         local char = utf8.char(codePoint)
-        local charAuxCodes = AuxFilter.aux_code[char] -- 每個字的輔助碼組
+        local charAuxCodes = env.aux_code[char] -- 每個字的輔助碼組
         if charAuxCodes then -- 輔助碼存在
             for code in charAuxCodes:gmatch("%S+") do
                 for i = 1, #code do
@@ -214,7 +217,7 @@ function AuxFilter.func(input, env)
         -- 遍歷每一個待選項
         for cand in input:iter() do
             local current_cand = cand
-            local auxCodes = AuxFilter.aux_code[current_cand.text] -- 仅单字非 nil
+            local auxCodes = env.aux_code[current_cand.text] -- 仅单字非 nil
             local fullAuxCodes = AuxFilter.fullAux(env, current_cand.text)
             
             -- 给候选项添加辅助代码提示
@@ -269,7 +272,9 @@ function AuxFilter.func(input, env)
 end
 
 function AuxFilter.fini(env)
-    env.notifier:disconnect()
+    if env.notifier then env.notifier:disconnect() end
+    env.notifier = nil
+    env.aux_code = nil
 end
 
 return AuxFilter

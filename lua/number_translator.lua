@@ -61,13 +61,17 @@ end
 function number2cnChar(num,flag,digitUnit,wordFigure)    --flag=0中文小写反之为大写
 	local st,result
 	num=tostring(num) result=""
-	local num1,num2=math.modf(num)
-	if tonumber(num2)==0 then
+	-- 按字符串处理整数，避免浮点转换及 Lua 版本差异改变位数。
+	local num1 = num:match("^%d+$")
+	if num1 then
+		num1 = num1:gsub("^0+", "")
+		if num1 == "" then num1 = "0" end
 		if tonumber(flag) < 1 then
 			digitUnit = digitUnit or {[1]="万";[2]="亿"}  wordFigure = wordFigure or {[1]="〇"; [2]="一"; [3]="十"; [4]="元"}
 		else
 			digitUnit = digitUnit or {[1]="万";[2]="亿"}  wordFigure = wordFigure or {[1]="零"; [2]="壹"; [3]="拾"; [4]="元"}
 		end
+		if num1 == "0" then return wordFigure[1] .. wordFigure[4] end
 		local lens=string.len(num1)
 		if lens<5 then result=formatNum(num1,flag) elseif lens<9 then result=formatNum(string.sub(num1,1,-5),flag) .. digitUnit[1].. formatNum(string.sub(num1,-4,-1),flag)
 		elseif lens<13 then result=formatNum(string.sub(num1,1,-9),flag) .. digitUnit[2] .. formatNum(string.sub(num1,-8,-5),flag) .. digitUnit[1] .. formatNum(string.sub(num1,-4,-1),flag) else result="" end
@@ -86,12 +90,12 @@ local function number2zh(num,t)
 	if tonumber(t) <1 then
 		wordFigure = {"〇","一","二","三","四","五","六","七","八","九"}
 	else wordFigure = {"零","壹","贰","叁","肆","伍","陆","柒","捌","玖"} end
-	if tostring(num)==nil then return "" end
+	if num == nil then return "" end
 	for pos=1,string.len(num) do
 		result=result..wordFigure[tonumber(string.sub(num, pos, pos)+1)]
 	end
-	result=result:gsub(wordFigure[1] .. wordFigure[1],wordFigure[1])
-	return result:gsub(wordFigure[1] .. wordFigure[1],wordFigure[1])
+	-- 小数必须逐位保留，包括连续零和末尾零。
+	return result
 end
 
 local function number_translatorFunc(num)
@@ -99,7 +103,7 @@ local function number_translatorFunc(num)
 	local result={}
 	if numberPart.dot~="" then
 		table.insert(result,{number2cnChar(numberPart.int,0,{"万", "亿"},{"〇","一","十","点"})..number2zh(numberPart.dec,0),"〔数字小写〕"})
-		table.insert(result,{number2cnChar(numberPart.int,1,{"萬", "億"},{"〇","一","十","点"})..number2zh(numberPart.dec,1),"〔数字大写〕"})
+		table.insert(result,{number2cnChar(numberPart.int,1,{"萬", "億"},{"零","壹","拾","点"})..number2zh(numberPart.dec,1),"〔数字大写〕"})
 	else
 		table.insert(result,{number2cnChar(numberPart.int,0,{"万", "亿"},{"〇","一","十",""}),"〔数字小写〕"})
 		table.insert(result,{number2cnChar(numberPart.int,1,{"萬", "億"},{"零","壹","拾",""}),"〔数字大写〕"})
@@ -112,10 +116,12 @@ end
 -- 触发模式为任意大写字母（除了 U，U 用在 Unicode 了）开头，可在 recognizer/patterns 中自定义
 local function number_translator(input, seg, env)
 	-- 获取 recognizer/patterns/number 的第 2 个字符作为触发前缀
-	env.number_keyword = env.number_keyword or env.engine.schema.config:get_string('recognizer/patterns/rmb'):sub(2, 2)
+	local pattern = env.engine.schema.config:get_string('recognizer/patterns/rmb') or ""
+	env.number_keyword = env.number_keyword or pattern:sub(2, 2)
     local str, num, numberPart
     if env.number_keyword ~= '' and input:sub(1, 1) == env.number_keyword then
-        str = string.gsub(input, "^(%a+)", "")
+        str = input:sub(2)
+        if not str:match("^%d+%.?%d*$") then return end
         numberPart = number_translatorFunc(str)
         if str and #str > 0 and #numberPart > 0 then
             for i = 1, #numberPart do

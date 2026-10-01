@@ -23,10 +23,6 @@
                     {
                         "type": "text",
                         "file": "others.txt"
-                    },
-                    {
-                        "type": "text",
-                        "file": "rime_word_marker_export.opencc.txt"
                     }
                 ]
             }

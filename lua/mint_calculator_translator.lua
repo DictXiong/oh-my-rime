@@ -504,13 +504,13 @@ methods_desc["var"] = "方差"
 
 -- 阶乘
 local function factorial(x)
-    -- 不能为负数
-    if x < 0 then
-        return nil
+    -- 170! 已接近浮点数上限；更大的参数既无有限结果，也会阻塞输入。
+    if type(x) ~= "number" or x < 0 or x ~= math.floor(x) or x > 170 then
+        error("阶乘参数必须是 0~170 的整数")
     elseif x == 0 or x == 1 then
         return 1
     end
-    local result = 1
+    local result = 1.0 -- Lua 5.3+ 的整数乘法会在 21! 开始溢出。
     for i = 1, x do
         result = result * i
     end
@@ -2371,6 +2371,8 @@ local function generateRandomNumbers(...)
     end
     if count < 1 or count ~= math.floor(count) then
         return "数量必须为正整数"
+    elseif count > 1000 then
+        return "数量超限，最多生成1000个随机数"
     elseif unique ~= 0 and unique ~= 1 then
         return "控制唯一性的参数必须为0或1"
     elseif unique == 0 and count > (max - min + 1) then
@@ -3099,6 +3101,26 @@ end
 calc_methods["jzzh"] = convertBase
 methods_desc["jzzh"] = "数字进制转换，支持2~36进制，(数字, 原进制, 目标进制)"
 
+-- 在独立协程中计数，不修改其他 Rime Lua 扩展的 hook。
+-- 即使表达式包含匿名函数/无限循环，也会在有限指令数内终止。
+local function evaluate(func)
+    if not debug or not debug.sethook then
+        return false, "当前 Lua 环境不支持计算预算"
+    end
+    local thread = coroutine.create(func)
+    local remaining = 100
+    debug.sethook(thread, function()
+        remaining = remaining - 1
+        if remaining <= 0 then error("计算量超限") end
+    end, "", 10000)
+    local success, result = coroutine.resume(thread)
+    debug.sethook(thread)
+    if success and coroutine.status(thread) ~= "dead" then
+        return false, "计算未完成"
+    end
+    return success, result
+end
+
 -- 简单计算器
 function T.func(input, seg, env)
     local composition = env.engine.context.composition
@@ -3119,13 +3141,15 @@ function T.func(input, seg, env)
         if loaded_func and (type(methods_desc[code]) == "string") then
             yield(Candidate(input, seg.start, seg._end, express .. ":" .. methods_desc[code], ""))
         elseif loaded_func then
-            local success, result = pcall(loaded_func)
+            local success, result = evaluate(loaded_func)
             if success then
                 yield(Candidate(input, seg.start, seg._end, tostring(result), ""))
                 yield(Candidate(input, seg.start, seg._end, express .. "=" .. tostring(result), ""))
             else
                 -- 处理执行错误
-                yield(Candidate(input, seg.start, seg._end, express, "执行错误"))
+                local message = tostring(result)
+                local comment = message:find("计算量超限", 1, true) and "计算量超限" or "执行错误"
+                yield(Candidate(input, seg.start, seg._end, express, comment))
             end
         else
             -- 处理加载错误

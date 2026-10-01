@@ -253,6 +253,8 @@ patch:
             - action: { symbol: { char: "X" } }
             - action: { symbol: { char: "_" } }
             - action: { symbol: { char: "x" } }
+            - action: { shortcutCommand: "#剪切" }
+              label: "剪切"
         - action: { symbol: { char: "c" } }
           swipe:
             - direction: up
@@ -264,6 +266,8 @@ patch:
             - action: { symbol: { char: "č" } }
             - action: { symbol: { char: "#" } }
             - action: { symbol: { char: "c" } }
+            - action: { shortcutCommand: "#复制" }
+              label: "复制"
         - action: { symbol: { char: "v" } }
           swipe:
             - direction: up
@@ -277,6 +281,8 @@ patch:
             - action: { symbol: { char: "ǜ" } }
             - action: { symbol: { char: "?" } }
             - action: { symbol: { char: "v" } }
+            - action: { shortcutCommand: "#粘贴" }
+              label: "粘贴"
         - action: { symbol: { char: "b" } }
           swipe:
             - direction: up

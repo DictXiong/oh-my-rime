@@ -21,6 +21,56 @@ local RIME_PROCESS_RESULTS = {
 -- Wanxiang Regex > lua --不支持断言够用了
 local RegexParser = {}
 
+-- Lua pattern 没有 {m,n}，按次数展开字符、转义字符或字符集合。
+-- 不在集合内部解释量词，并限制展开规模，避免自定义规则爆炸。
+local function expand_repetitions(patterns)
+    local result = {}
+    for _, pattern in ipairs(patterns) do
+        local i, expanded = 1, false
+        while i <= #pattern do
+            local first, last = i, i
+            local char = pattern:sub(i, i)
+            if char == "%" then
+                last = i + 1
+            elseif char == "[" then
+                last = i + 1
+                if pattern:sub(last, last) == "^" then last = last + 1 end
+                if pattern:sub(last, last) == "]" then last = last + 1 end
+                while last <= #pattern and pattern:sub(last, last) ~= "]" do
+                    if pattern:sub(last, last) == "%" then last = last + 1 end
+                    last = last + 1
+                end
+            end
+            local suffix = pattern:sub(last + 1)
+            local token, low, high = suffix:match("^(%{(%d+),(%d+)%})")
+            if not token then
+                token, low = suffix:match("^(%{(%d+)%})")
+                high = low
+            end
+            if token then
+                low, high = tonumber(low), tonumber(high)
+                if low > high or high > 32 or #result + high - low + 1 > 128 then
+                    return {} -- 不使用不完整的展开结果。
+                end
+                local atom = pattern:sub(first, last)
+                for count = low, high do
+                    result[#result + 1] = pattern:sub(1, first - 1)
+                        .. atom:rep(count) .. suffix:sub(#token + 1)
+                end
+                expanded = true
+                break
+            end
+            i = last + 1
+        end
+        if not expanded then result[#result + 1] = pattern end
+        if #result > 128 then return {} end
+    end
+    if table.concat(result, "\n") ~= table.concat(patterns, "\n") then
+        return expand_repetitions(result)
+    end
+    return result
+end
+
 function RegexParser.normalize(regex)
     local p = regex
     p = p:gsub("%(%?%:", "%(") -- 清理 (?:
@@ -201,12 +251,13 @@ function RegexParser.convert(regex_str)
     local changed = true
     while changed and loop < 5 do
         local new_list = RegexParser.expand_groups(list)
-        if #new_list > #list then list = new_list else changed = false end
+        changed = table.concat(new_list, "\n") ~= table.concat(list, "\n")
+        list = new_list
         loop = loop + 1
     end
     -- 3. 展开 ? 量词
     -- 这会将带 ? 的正则裂变成多个确定的正则
-    list = expand_optional(list)
+    list = expand_optional(expand_repetitions(list))
     -- 4. 补全锚点
     for i, p in ipairs(list) do list[i] = ensure_anchor(p) end
     return list
