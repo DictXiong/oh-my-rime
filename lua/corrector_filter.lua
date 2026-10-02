@@ -146,6 +146,7 @@ local hidden_comment_types = {
     phrase = true,
     sentence = true,
     user_phrase = true,
+    completion = true, -- 未输入完整编码的联想词也会携带 spelling_hints。
 }
 
 local function update_comment(cand, env)

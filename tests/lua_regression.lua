@@ -252,4 +252,44 @@ equal(#yielded, 0, 'ordinary input bypasses Unicode translator')
 unicode.fini(unicode_env)
 equal(disconnected, true, 'Unicode memory disconnected')
 
+-- Pinyin visibility also applies to predictions with untyped syllables.
+local corrector = dofile('lua/corrector_filter.lua')
+local correction_segment = {tags = 0}
+local corrector_env = {name_space = 'corrector_filter', engine = {
+    schema = {config = {get_string = function() return " '" end}},
+    context = {input = 'yebuib', tone_display = false,
+        get_option = function(self) return self.tone_display end,
+        composition = {back = function() return correction_segment end},
+    },
+}}
+corrector.init(corrector_env)
+local function filter_comment(kind, text, comment, preedit)
+    local cand = {type = kind, text = text, comment = comment, preedit = preedit,
+        get_genuine = function(self) return self end}
+    yielded = {}
+    corrector.func(stream({cand}), corrector_env)
+    equal(yielded[1], cand, 'preserve candidate ' .. kind)
+    return cand.comment
+end
+local predictions = {
+    {'也不是', 'yě bú shì'},
+    {'也不是不行', 'yě bú shì bù xíng'},
+    {'也不是不能加', 'yě bú shì bù néng jiā'},
+}
+for _, prediction in ipairs(predictions) do
+    for _, enabled in ipairs({false, true, false}) do
+        corrector_env.engine.context.tone_display = enabled
+        equal(filter_comment('completion', prediction[1], prediction[2], 'ye bu ui b'),
+            enabled and prediction[2] or '', 'prediction tone visibility ' .. prediction[1])
+    end
+end
+for _, kind in ipairs({'phrase', 'sentence', 'user_phrase'}) do
+    equal(filter_comment(kind, '也不是', 'yě bú shì'), '', 'ordinary pinyin hidden ' .. kind)
+end
+for _, kind in ipairs({'reverse_lookup', 'unicode', 'number', 'shijian', 'english'}) do
+    equal(filter_comment(kind, '提示', '独立注释'), '独立注释', 'keep translator comment ' .. kind)
+end
+equal(filter_comment('completion', '主角', 'zhǔ jiǎo'), '[zhǔ jué]', 'correction survives tone off')
+equal(filter_comment('completion', '也不是', ''), '', 'empty prediction comment')
+
 print('Lua regressions passed (' .. count .. ' assertions)')
